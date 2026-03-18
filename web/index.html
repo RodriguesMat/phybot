@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Phybot Controle</title>
+  <style>
+    :root {
+      --bg-1: #0a2347;
+      --bg-2: #1a3a5c;
+      --card: rgba(255, 255, 255, 0.09);
+      --card-border: rgba(255, 255, 255, 0.16);
+      --text: #e9f2ff;
+      --muted: #b8c8e0;
+      --accent: #67d1ff;
+      --danger: #ff5e6a;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .app {
+      width: min(500px, 100vw);
+      height: 100vh;
+      padding: env(safe-area-inset-top) 14px calc(12px + env(safe-area-inset-bottom)) 14px;
+      display: grid;
+      grid-template-rows: auto auto auto auto 1fr auto;
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .header {
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f87171;
+      box-shadow: 0 0 10px rgba(248, 113, 113, 0.7);
+    }
+
+    .dot.connected {
+      background: var(--ok);
+      box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+    }
+
+    .sensors {
+      min-height: 120px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-content: start;
+      overflow: auto;
+    }
+
+    .sensor-card {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 66px;
+    }
+
+    .sensor-title {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .sensor-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .velocity {
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .velocity-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .control-header {
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .toggle {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+
+    .controls {
+      min-height: 210px;
+      padding: 12px;
+      display: grid;
+      place-items: center;
+    }
+
+    #joystickArea {
+      width: 100%;
+      height: 210px;
+      display: grid;
+      place-items: center;
+    }
+
+    #joystickCanvas {
+      width: min(300px, 92vw);
+      height: 200px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      touch-action: none;
+    }
+
+    #dpadArea {
+      width: 100%;
+      display: none;
+      place-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: 72px 72px 72px;
+      grid-template-rows: 72px 72px 72px;
+      gap: 8px;
+    }
+
+    .dpad-btn {
+      border: none;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.14);
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .dpad-btn:active,
+    .dpad-btn.active {
+      background: rgba(103, 209, 255, 0.35);
+      transform: scale(0.98);
+    }
+
+    .dpad-stop {
+      background: rgba(251, 191, 36, 0.28);
+    }
+
+    .emergency {
+      border: none;
+      border-radius: 14px;
+      min-height: 54px;
+      background: linear-gradient(180deg, #ff6b79 0%, #de4451 100%);
+      color: #fff;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .hint {
+      font-size: 0.77rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .nav-row {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .nav-info {
+      font-size: 0.82rem;
+      color: var(--muted);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-info strong {
+      color: var(--accent);
+    }
+
+    .nav-btn {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 6px 14px;
+      background: rgba(103, 209, 255, 0.15);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .nav-btn.cancel {
+      background: rgba(255, 94, 106, 0.25);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card header">
+      <div class="brand">PHYBOT CONTROLE</div>
+      <div class="status">
+        <span id="connDot" class="dot"></span>
+        <span id="connText">Desconectado</span>
+      </div>
+    </section>
+
+    <section class="card sensors" id="sensorGrid" aria-label="Sensores"></section>
+
+    <section class="card nav-row">
+      <div class="nav-info" id="navInfo">Trajetória pronta</div>
+      <button id="navBtn" class="nav-btn" type="button">Navegar</button>
+    </section>
+
+    <section class="card velocity">
+      <div class="velocity-label">
+        <span>Velocidade</span>
+        <strong id="speedValue">150</strong>
+      </div>
+      <input id="speedSlider" type="range" min="0" max="255" step="1" value="150" />
+    </section>
+
+    <section class="card control-header">
+      <span>Controle de direção</span>
+      <button id="modeToggle" class="toggle" type="button">Modo: Joystick</button>
+    </section>
+
+    <section class="card controls">
+      <div id="joystickArea">
+        <canvas id="joystickCanvas" width="300" height="200"></canvas>
+      </div>
+
+      <div id="dpadArea">
+        <div class="dpad-grid">
+          <div></div>
+          <button class="dpad-btn" data-dir="forward" type="button">▲</button>
+          <div></div>
+          <button class="dpad-btn" data-dir="left" type="button">◀</button>
+          <button class="dpad-btn dpad-stop" data-dir="stop" type="button">STOP</button>
+          <button class="dpad-btn" data-dir="right" type="button">▶</button>
+          <div></div>
+          <button class="dpad-btn" data-dir="backward" type="button">▼</button>
+          <div></div>
+        </div>
+      </div>
+    </section>
+
+    <button id="emergencyBtn" class="emergency" type="button">PARADA DE EMERGENCIA</button>
+    <div class="hint">Simulacao via WebSocket. Abra no celular usando o IP do notebook.</div>
+  </main>
+
+  <script src="./controller.js?v=2"></script>
+</body>
+</html>
